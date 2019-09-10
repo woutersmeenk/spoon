@@ -206,6 +206,7 @@ public class ParentExiter extends CtInheritanceScanner {
 			if (!(this.child instanceof CtBlock)) {
 				child = jdtTreeBuilder.getFactory().Code().createCtBlock(child);
 				child.setImplicit(true);
+				child.setPosition(this.child.getPosition());
 			}
 			loop.setBody(child);
 		}
@@ -423,6 +424,7 @@ public class ParentExiter extends CtInheritanceScanner {
 				op.setKind(BinaryOperatorKind.PLUS);
 				op.setLeftHandOperand(operator.getRightHandOperand());
 				op.setRightHandOperand((CtExpression<?>) child);
+				op.setType((CtTypeReference) operator.getFactory().Type().STRING.clone());
 				operator.setRightHandOperand(op);
 				int[] lineSeparatorPositions = jdtTreeBuilder.getContextBuilder().getCompilationUnitLineSeparatorPositions();
 				SourcePosition leftPosition = op.getLeftHandOperand().getPosition();
@@ -463,6 +465,10 @@ public class ParentExiter extends CtInheritanceScanner {
 			return;
 		} else if (child instanceof CtCatchVariable) {
 			catchBlock.setParameter((CtCatchVariable<? extends Throwable>) child);
+			// Catch annotations are processed before actual CtCatchVariable is created and because of that they attach to CtCatch.
+			// Since annotations cannot be attached to CtCatch itself, we can simply transfer them to CtCatchVariable.
+			catchBlock.getAnnotations().forEach(a -> { a.setParent(child); child.addAnnotation(a); });
+			catchBlock.setAnnotations(Collections.unmodifiableList(Collections.emptyList()));
 			return;
 		}
 		super.visitCtCatch(catchBlock);
@@ -646,7 +652,7 @@ public class ParentExiter extends CtInheritanceScanner {
 				if (child instanceof CtThisAccess) {
 					final CtTypeReference<?> declaringType = invocation.getExecutable().getDeclaringType();
 					if (declaringType != null && invocation.getExecutable().isStatic() && child.isImplicit()) {
-						invocation.setTarget(jdtTreeBuilder.getFactory().Code().createTypeAccess(declaringType, declaringType.isAnonymous()));
+						invocation.setTarget(jdtTreeBuilder.getFactory().Code().createTypeAccess(declaringType, true));
 					} else {
 						invocation.setTarget((CtThisAccess<?>) child);
 					}

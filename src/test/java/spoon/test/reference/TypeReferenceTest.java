@@ -21,6 +21,8 @@ import spoon.Launcher;
 import spoon.SpoonModelBuilder;
 import spoon.compiler.SpoonResource;
 import spoon.compiler.SpoonResourceHelper;
+import spoon.reflect.CtModel;
+import spoon.reflect.code.CtAssignment;
 import spoon.reflect.code.CtConstructorCall;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.code.CtFieldRead;
@@ -664,17 +666,39 @@ public class TypeReferenceTest {
 		// contract: CtTypeReference#isImplicitParent can be used read / write implicit value of the parent
 		CtType<?> type = ModelUtils.buildClass(SuperAccess.class);
 		CtTypeReference<?> typeRef = type.getSuperclass();
-		assertFalse(typeRef.isImplicitParent());
-		assertFalse(typeRef.getPackage().isImplicit());
-		
-		//calling of setImplicitParent influences implicitnes of parent
-		typeRef.setImplicitParent(true);
 		assertTrue(typeRef.isImplicitParent());
 		assertTrue(typeRef.getPackage().isImplicit());
-
-		//calling of setImplicit on parent influences return value of isImplicitParent
-		typeRef.getPackage().setImplicit(false);
+		
+		//calling of setImplicitParent influences implicitnes of parent
+		typeRef.setImplicitParent(false);
 		assertFalse(typeRef.isImplicitParent());
 		assertFalse(typeRef.getPackage().isImplicit());
+
+		//calling of setImplicit on parent influences return value of isImplicitParent
+		typeRef.getPackage().setImplicit(true);
+		assertTrue(typeRef.isImplicitParent());
+		assertTrue(typeRef.getPackage().isImplicit());
+	}
+
+	@Test
+	public void testIsInTheSamePackageNoClasspath() {
+		// contract: we should not get NPE within canAccess() in noclasspath mode
+		final Launcher launcher = new Launcher();
+		launcher.addInputResource("./src/test/resources/noclasspath/A5.java");
+		launcher.getEnvironment().setNoClasspath(true);
+		CtModel model = launcher.buildModel();
+		CtType<?> type = model.getAllTypes().stream().findFirst().get();
+
+		List<CtLocalVariable> vars = type.getElements(new TypeFilter<>(CtLocalVariable.class));
+		List<CtField> fields = type.getElements(new TypeFilter<>(CtField.class));
+		List<CtInvocation> invocations = type.getElements(new TypeFilter<>(CtInvocation.class));
+
+		// test null type
+		CtTypeReference tr1 = invocations.get(1).getType();
+		assertTrue(fields.get(0).getReference().getType().canAccess(tr1));
+
+		// test type with null package
+		CtTypeReference tr2 = fields.get(0).getType();
+		assertTrue(vars.get(0).getReference().getType().canAccess(tr2));
 	}
 }

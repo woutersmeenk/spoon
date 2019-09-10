@@ -43,6 +43,7 @@ import spoon.reflect.reference.CtFieldReference;
 import spoon.reflect.visitor.CtScanner;
 import spoon.reflect.visitor.DefaultJavaPrettyPrinter;
 import spoon.reflect.visitor.Query;
+import spoon.reflect.visitor.ImportConflictDetector;
 import spoon.reflect.visitor.filter.NamedElementFilter;
 import spoon.reflect.visitor.filter.TypeFilter;
 import spoon.test.fieldaccesses.testclasses.B;
@@ -256,7 +257,7 @@ public class FieldAccessTest {
 
 		CtFieldAccess ctFieldAccess = ctType
 				.getElements(new TypeFilter<>(CtFieldAccess.class)).get(0);
-		assertEquals("(game.board.width)", ctFieldAccess.toString());
+		assertEquals("game.board.width", ctFieldAccess.toString());
 
 		CtFieldReference ctFieldReferenceWith = ctFieldAccess.getVariable();
 		assertEquals("width", ctFieldReferenceWith.getSimpleName());
@@ -290,12 +291,12 @@ public class FieldAccessTest {
 		final CtUnaryOperator<?> first = unaryOperators.get(0);
 		assertEquals(UnaryOperatorKind.POSTINC, first.getKind());
 		assertEquals(fieldRead, first.getOperand());
-		assertEquals("(i)++", first.toString());
+		assertEquals("i++", first.toString());
 
 		final CtUnaryOperator<?> second = unaryOperators.get(1);
 		assertEquals(UnaryOperatorKind.PREINC, second.getKind());
 		assertEquals(fieldRead, second.getOperand());
-		assertEquals("++(i)", second.toString());
+		assertEquals("++i", second.toString());
 	}
 
 	@Test
@@ -436,8 +437,8 @@ public class FieldAccessTest {
 		final CtClass<B> aClass = launcher.getFactory().Class().get(B.class);
 
 		// now static fields are used with the name of the parent class
-		assertEquals("A.myField", aClass.getElements(new TypeFilter<>(CtFieldWrite.class)).get(0).toString());
-		assertEquals("finalField", aClass.getElements(new TypeFilter<>(CtFieldWrite.class)).get(1).toString());
+		assertEquals("spoon.test.fieldaccesses.testclasses.A.myField", aClass.getElements(new TypeFilter<>(CtFieldWrite.class)).get(0).toString());
+		assertEquals("spoon.test.fieldaccesses.testclasses.B.finalField", aClass.getElements(new TypeFilter<>(CtFieldWrite.class)).get(1).toString());
 	}
 	@Test
 	public void testFieldAccessAutoExplicit() throws Exception {
@@ -449,7 +450,20 @@ public class FieldAccessTest {
  		assertEquals("age", ageFR.getParent().toString());
  		//add local variable declaration which hides the field declaration 
  		method.getBody().insertBegin((CtStatement) mouse.getFactory().createCodeSnippetStatement("int age = 1").compile());
+ 		//run model validator to fix the problem
+ 		new ImportConflictDetector().process(mouse.getPosition().getCompilationUnit());
 		//now the field access must use explicit "this."
  		assertEquals("this.age", ageFR.getParent().toString());
+	}
+
+	@Test
+	public void testFieldAccessWithParenthesis() {
+		// contract: there should not be any redundant parentheses around fields
+		// https://github.com/INRIA/spoon/pull/3021
+		CtClass<?> c1 = Launcher.parseClass("class C1 { int count ; void m() { for(int i=0;i<count;i++){}}}");
+		assertEquals("count", c1.getElements(new TypeFilter<>(CtFieldAccess.class)).get(0).toString());
+
+		CtClass c2 = Launcher.parseClass("class C1 { int count ; void m() { for(int i=0;i<(long)count;i++){}}}");
+		assertEquals("((long) (count))", c2.getElements(new TypeFilter<>(CtFieldAccess.class)).get(0).toString());
 	}
 }

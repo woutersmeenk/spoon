@@ -1,15 +1,6 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>org.sonatype.oss</groupId>
-        <artifactId>oss-parent</artifactId>
-        <version>7</version>
-        
-        <!-- must be empty otherwise reads ../pom.xml by default -->
-        <relativePath></relativePath>
-    </parent>
-
     <groupId>fr.inria.gforge.spoon</groupId>
     <artifactId>spoon-pom</artifactId>
     <packaging>pom</packaging>
@@ -277,9 +268,11 @@
                             <include>src/main/java/**</include>
                             <!-- We also want to check the license in templates to generate files with the proper header -->
                             <include>src/test/java/spoon/generating/clone/*</include>
-                            <!--  excluding the code coming from Javaparser -->
-                            <exclude>src/main/java/spoon/javadoc/internal/*</exclude>
                         </includes>
+                        <excludes>
+		            <!--  excluding the code coming from Javaparser -->
+		            <exclude>src/main/java/spoon/javadoc/internal/*</exclude>
+                        </excludes>
                     </configuration>
                     <executions>
                         <execution>
@@ -309,10 +302,14 @@
             </plugin>
             <plugin>
                 <!-- Warning the configuration here is used in "mvn site", not in "mvn javadoc:javadoc" -->
-                <!-- See also -DadditionalJOption=-Xdoclint:syntax,-missing in travis-verify.sh -->
+                <!-- There is another block maven-javadoc-plugin below -->
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.0.1</version>
+                <version>3.1.1</version>
+                <configuration>
+                    <!-- see https://stackoverflow.com/a/57430117 -->
+                    <doclint>none</doclint>
+                </configuration>
                 <reportSets>
                     <reportSet>
                         <id>html</id>
@@ -340,7 +337,7 @@
                     <plugin>
                         <groupId>org.jacoco</groupId>
                         <artifactId>jacoco-maven-plugin</artifactId>
-                        <version>0.8.1</version>
+                        <version>0.8.2</version>
                         <configuration>
                             <excludes>
                                 <!-- we exclude the GUI class, because we don't want Swing GUI tests in Travis --> 
@@ -384,9 +381,13 @@
                     </plugin>
 
                     <plugin>
+                        <!-- Warning: there is another block maven-javadoc-plugin above -->
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>3.0.0-M1</version>
+                        <version>3.1.1</version>
+                        <configuration>
+                            <doclint>none</doclint>
+                        </configuration>
                         <executions>
                             <execution>
                                 <id>attach-javadocs</id>

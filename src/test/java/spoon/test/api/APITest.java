@@ -47,6 +47,7 @@ import spoon.support.DerivedProperty;
 import spoon.support.JavaOutputProcessor;
 import spoon.support.OutputDestinationHandler;
 import spoon.support.UnsettableProperty;
+import spoon.support.compiler.SnippetCompilationError;
 import spoon.support.reflect.declaration.CtElementImpl;
 import spoon.template.Local;
 import spoon.template.TemplateMatcher;
@@ -302,7 +303,12 @@ public class APITest {
 		aMethod.setBody(spoon.getFactory().Core().createBlock());
 		aClass.addMethod(aMethod);
 
-		assertFalse(spoon.getModelBuilder().compile());
+		// contract: compilation errors are not silent
+		try {
+			spoon.getModelBuilder().compile();
+			fail();
+		} catch (SnippetCompilationError expected) {}
+
 
 		aClass.removeMethod(aMethod);
 
@@ -439,7 +445,7 @@ public class APITest {
 		assertEquals("A", l.getSimpleName());
 		assertEquals(1, l.getMethods().size());
 		assertEquals("m", l.getMethodsByName("m").get(0).getSimpleName());
-		assertEquals("System.out.println(\"yeah\")", l.getMethodsByName("m").get(0).getBody().getStatement(0).toString());
+		assertEquals("java.lang.System.out.println(\"yeah\")", l.getMethodsByName("m").get(0).getBody().getStatement(0).toString());
 	}
 
 	@Test
